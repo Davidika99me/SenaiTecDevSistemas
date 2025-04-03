@@ -1,0 +1,54 @@
+const { Builder, By, until } = require('selenium-webdriver');
+
+// Função sleep utilizando Promises para atrasos
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+(async function loginTest() {
+  let driver = await new Builder().forBrowser('chrome').build();
+  try {
+    await driver.get('http://127.0.0.1:5500/index.html');
+
+    async function testLogin(email, password, expectedMessage) {
+      let emailInput = await driver.findElement(By.id('email'));
+      let passwordInput = await driver.findElement(By.id('password'));
+      let button = await driver.findElement(By.id('btn'));
+      let message = await driver.findElement(By.id('message'));
+
+      await emailInput.clear();
+      await passwordInput.clear();
+
+      await emailInput.sendKeys(email);
+      await sleep(1000); // Atraso de 1 segundo
+      await passwordInput.sendKeys(password);
+      await sleep(1000); // Atraso de 1 segundo
+
+      // Utilizando setTimeout para atrasar o clique no botão
+      await new Promise(resolve => {
+        setTimeout(async () => {
+          await button.click();
+          resolve();
+        }, 1000); // Atraso de 1 segundo antes de clicar
+      });
+
+      await driver.wait(until.elementIsVisible(message), 5000);
+      let messageText = await message.getText();
+
+      if (messageText === expectedMessage) {
+        console.log(`Teste com email: "${email}" e senha: "${password}" passou.`);
+      } else {
+        console.error(`Teste com email: "${email}" e senha: "${password}" falhou. Esperado: "${expectedMessage}", Obtido: "${messageText}".`);
+      }
+      await sleep(1000); // Atraso de 1 segundo antes do próximo teste
+    }
+
+    await testLogin('', '', 'campos não preenchidos');
+    await testLogin('admin', 'admin', 'Login realizado com sucesso!');
+    await testLogin('admin', 'wrongpass', 'Email ou senha incorretos');
+    await testLogin('wronguser', 'admin', 'Email ou senha incorretos');
+
+  } finally {
+    await driver.quit();
+  }
+})();
